@@ -1,7 +1,11 @@
 package cubex2.ttfr;
 
-import java.awt.*;
+import java.awt.Font;
+import java.awt.FontFormatException;
+import java.awt.Point;
 import java.awt.font.GlyphVector;
+import java.io.File;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.text.Bidi;
 import java.util.ArrayList;
@@ -279,6 +283,18 @@ public class StringCache
     {
         /* Change the font in the glyph cache and clear the string cache so all strings have to be re-layed out and re-rendered */
         glyphCache.setDefaultFont(fontName, fontSize, antiAlias);
+        antiAliasEnabled = antiAlias;
+        weakRefCache.clear();
+        stringCache.clear();
+
+        /* Pre-cache the ASCII digits to allow for fast glyph substitution */
+        cacheDightGlyphs();
+    }
+
+    public void setDefaultFont(File fontFile, int fontSize, boolean antiAlias) throws IOException, FontFormatException
+    {
+        /* Change the font in the glyph cache and clear the string cache so all strings have to be re-layed out and re-rendered */
+        glyphCache.setDefaultFont(fontFile, fontSize, antiAlias);
         antiAliasEnabled = antiAlias;
         weakRefCache.clear();
         stringCache.clear();

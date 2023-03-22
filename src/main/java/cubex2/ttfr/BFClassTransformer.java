@@ -1,22 +1,52 @@
 package cubex2.ttfr;
 
 import net.minecraft.launchwrapper.IClassTransformer;
-import org.objectweb.asm.*;
-import org.objectweb.asm.tree.*;
+import net.minecraft.launchwrapper.Launch;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.VarInsnNode;
 
 import java.util.ListIterator;
 
 public class BFClassTransformer implements IClassTransformer, Opcodes
 {
-    private final String FontRendererObf = "bip";
-    private final String ResourceLocationObf = "nf";
+    private static final boolean developerEnvironment = (boolean) Launch.blackboard.get("fml.deobfuscatedEnvironment");
+
+    private enum MethodName {
+        FontRenderer_posX("posX", "field_78295_j"),
+        ;
+        private final String deobfName;
+        private final String seargeName;
+
+        MethodName(String deobfName, String seargeName) {
+            this.deobfName = deobfName;
+            this.seargeName = seargeName;
+        }
+
+        public String getName() {
+            return developerEnvironment ? deobfName : seargeName;
+        }
+    }
 
     private static final String FIELD_ENABLED = "bf_enabled";
 
     @Override
     public byte[] transform(String s, String s1, byte[] bytes)
     {
-        if (s.equals(FontRendererObf) || s.equals("net.minecraft.client.gui.FontRenderer"))
+        if (s.equals("net.minecraft.client.gui.FontRenderer"))
         {
             ClassNode classNode = new ClassNode();
             ClassReader classReader = new ClassReader(bytes);
@@ -33,13 +63,15 @@ public class BFClassTransformer implements IClassTransformer, Opcodes
 
     private void transform(ClassNode classNode)
     {
+        System.out.println("Transforming class " + classNode.name);
+
         for (MethodNode method : classNode.methods)
         {
-            System.out.println(method.name + " " + method.desc);
+            System.out.println("- " + method.name + " " + method.desc);
         }
 
-        String resourceLocation = classNode.name.equals(FontRendererObf) ? ResourceLocationObf : "net/minecraft/util/ResourceLocation";
-        String posX = classNode.name.equals(FontRendererObf) ? "i" : "field_78295_j";
+        String resourceLocation = "net/minecraft/util/ResourceLocation";
+        String posX = MethodName.FontRenderer_posX.getName();
 
         classNode.interfaces.add("cubex2/ttfr/IBFFontRenderer");
         classNode.fields.add(new FieldNode(ACC_PUBLIC, "stringCache", "Lcubex2/ttfr/StringRenderer;", null, null));
@@ -59,7 +91,7 @@ public class BFClassTransformer implements IClassTransformer, Opcodes
             if (node instanceof MethodInsnNode)
             {
                 MethodInsnNode methodNode = (MethodInsnNode) node;
-                if (hasName(methodNode, "readGlyphSizes", "func_98306_d", "d")
+                if (hasName(methodNode, "readGlyphSizes", "func_98306_d")
                     && methodNode.desc.equals("()V"))
                 {
                     InsnList toInject = new InsnList();
@@ -80,7 +112,7 @@ public class BFClassTransformer implements IClassTransformer, Opcodes
         {
             System.out.println(method.name + " " + method.desc);
         }
-        m = findMethod(classNode, "(Ljava/lang/String;FFIZ)I", "drawString", "func_175065_a", "a");
+        m = findMethod(classNode, "(Ljava/lang/String;FFIZ)I", "drawString", "func_175065_a");
         System.out.println(m);
         iterator = m.instructions.iterator();
         while (iterator.hasNext())
@@ -105,7 +137,7 @@ public class BFClassTransformer implements IClassTransformer, Opcodes
         }
 
         {
-            m = findMethod(classNode, "(Ljava/lang/String;)Ljava/lang/String;", "bidiReorder", "func_147647_b", "c");
+            m = findMethod(classNode, "(Ljava/lang/String;)Ljava/lang/String;", "bidiReorder", "func_147647_b");
 
             InsnList toInject = new InsnList();
             toInject.add(new VarInsnNode(ALOAD, 0));
@@ -116,7 +148,7 @@ public class BFClassTransformer implements IClassTransformer, Opcodes
             m.instructions.insertBefore(m.instructions.getFirst(), toInject);
         }
 
-        m = findMethod(classNode, "(Ljava/lang/String;FFIZ)I", "renderString", "func_180455_b", "b");
+        m = findMethod(classNode, "(Ljava/lang/String;FFIZ)I", "renderString", "func_180455_b");
         iterator = m.instructions.iterator();
         while (iterator.hasNext())
         {
@@ -124,7 +156,7 @@ public class BFClassTransformer implements IClassTransformer, Opcodes
             if (node instanceof MethodInsnNode)
             {
                 MethodInsnNode methodNode = (MethodInsnNode) node;
-                if (hasName(methodNode, "renderStringAtPos", "func_78255_a", "a"))
+                if (hasName(methodNode, "renderStringAtPos", "func_78255_a"))
                 {
                     // Remove call
                     AbstractInsnNode firstNode = methodNode.getPrevious().getPrevious().getPrevious();
@@ -165,7 +197,7 @@ public class BFClassTransformer implements IClassTransformer, Opcodes
             }
         }
         {
-            m = findMethod(classNode, "(Ljava/lang/String;)I", "getStringWidth", "func_78256_a", "a");
+            m = findMethod(classNode, "(Ljava/lang/String;)I", "getStringWidth", "func_78256_a");
             LabelNode labelNode = new LabelNode(new Label());
 
             InsnList toInject = new InsnList();
@@ -185,7 +217,7 @@ public class BFClassTransformer implements IClassTransformer, Opcodes
         }
 
         {
-            m = findMethod(classNode, "(Ljava/lang/String;IZ)Ljava/lang/String;", "trimStringToWidth", "func_78262_a", "a");
+            m = findMethod(classNode, "(Ljava/lang/String;IZ)Ljava/lang/String;", "trimStringToWidth", "func_78262_a");
             LabelNode labelNode = new LabelNode(new Label());
 
             InsnList toInject = new InsnList();
@@ -207,7 +239,7 @@ public class BFClassTransformer implements IClassTransformer, Opcodes
         }
 
         {
-            m = findMethod(classNode, "(Ljava/lang/String;I)I", "sizeStringToWidth", "func_78259_e", "e");
+            m = findMethod(classNode, "(Ljava/lang/String;I)I", "sizeStringToWidth", "func_78259_e");
             LabelNode labelNode = new LabelNode(new Label());
 
             InsnList toInject = new InsnList();

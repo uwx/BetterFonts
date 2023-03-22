@@ -14,11 +14,30 @@ version = "1.12.1-1.9.1"
 group = "cubex2.ttfr" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "TTFR"
 
+compileJava {
+    sourceCompatibility = targetCompatibility = '1.8'
+}
+
+ext {
+    minecraft_version_major = '1.12'
+    minecraft_version_minor = "$project.minecraft_version_major.2"
+    forge_version = '14.23.5.2838'
+
+    // the mappings can be changed at any time, and must be in the following format.
+    // snapshot_YYYYMMDD   snapshot are built nightly.
+    // stable_#            stables are built at the discretion of the MCP team.
+    // Use non-default mappings at your own risk. they may not always work.
+    // simply re-run your setup task after changing the mappings to update your workspace.
+    mappings = 'snapshot_20171003'
+
+    coremod_class = 'cubex2.ttfr.BetterFontsCore'
+}
+
 minecraft {
-    version = "1.12.1-14.22.0.2452"
+    version = "$project.minecraft_version_minor-$project.forge_version"
     runDir = "run"
-    mappings = "snapshot_20170624"
-    makeObfSourceJar = false
+    mappings = project.mappings
+    makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
 }
 
 dependencies {
@@ -46,28 +65,58 @@ dependencies {
 }
 
 processResources
-        {
-            // this will ensure that this task is redone when the versions change.
-            inputs.property "version", project.version
-            inputs.property "mcversion", project.minecraft.version
+{
+    // this will ensure that this task is redone when the versions change.
+    inputs.property 'version', project.version
+    inputs.property 'mcversion', project.minecraft.version
 
-            // replace stuff in mcmod.info, nothing else
-            from(sourceSets.main.resources.srcDirs) {
-                include 'mcmod.info'
+    // replace stuff in mcmod.info, nothing else
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
 
-                // replace version and mcversion
-                expand 'version': project.version, 'mcversion': project.minecraft.version
+        // replace version and mcversion
+        expand 'version':project.version, 'mcversion':project.minecraft.version
+    }
+
+    // copy everything else except the mcmod.info
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
+}
+
+makeStart {
+    // TODO do this properly with FG2, copied straight from https://github.com/Ordinastie/MalisisCore/blob/1.12/build.gradle
+    addReplacement(
+            "parseArgs(args);",
+            """
+            parseArgs(args);
+            String __coremodProp = System.getProperty("fml.coreMods.load", "");
+            __coremodProp += "$project.coremod_class";
+            System.setProperty("fml.coreMods.load", __coremodProp);
+            """)
+
+    // Support newer JDKs with FG2
+    // https://github.com/MinecraftForge/MinecraftForge/blob/9d8817b5db53db7f92ac1346b1a64523dc36dfbe/src/userdev/java/net/minecraftforge/userdev/LaunchTesting.java#L126
+    addReplacement(
+            "// hack the classloader now.",
+            """
+            try
+            {
+                final java.lang.reflect.Method initializePathMethod = ClassLoader.class.getDeclaredMethod("initializePath", String.class);
+                initializePathMethod.setAccessible(true);
+                final Object usrPathsValue = initializePathMethod.invoke(null, "java.library.path");
+                final Field usrPathsField = ClassLoader.class.getDeclaredField("usr_paths");
+                usrPathsField.setAccessible(true);
+                usrPathsField.set(null, usrPathsValue);
             }
-
-            // copy everything else, thats not the mcmod.info
-            from(sourceSets.main.resources.srcDirs) {
-                exclude 'mcmod.info'
-            }
-        }
+            catch(Throwable t) {}
+            if (true) return; // avoid unreachable statement compile error
+            """)
+}
 
 jar {
     manifest {
-        attributes 'FMLCorePlugin': 'cubex2.ttfr.BetterFontsCore',
+        attributes 'FMLCorePlugin': project.coremod_class,
                 'FMLCorePluginContainsFMLMod': 'false'
     }
 }

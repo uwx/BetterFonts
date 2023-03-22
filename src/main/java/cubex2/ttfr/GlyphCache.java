@@ -6,11 +6,20 @@ import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.GlStateManager;
 import org.lwjgl.opengl.GL11;
 
-import java.awt.*;
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontFormatException;
+import java.awt.Graphics2D;
+import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
@@ -209,6 +218,17 @@ public class GlyphCache
         System.out.println("BetterFonts loading font \"" + name + "\"");
         usedFonts.clear();
         usedFonts.add(new Font(name, Font.PLAIN, 72)); //size 1 > 72
+
+        fontSize = size;
+        antiAliasEnabled = antiAlias;
+        setRenderingHints();
+    }
+
+    void setDefaultFont(File file, int size, boolean antiAlias) throws IOException, FontFormatException
+    {
+        System.out.println("BetterFonts loading font \"" + file.getPath() + "\"");
+        usedFonts.clear();
+        usedFonts.add(Font.createFont(Font.TRUETYPE_FONT, file).deriveFont(Font.PLAIN, 72)); //size 1 > 72
 
         fontSize = size;
         antiAliasEnabled = antiAlias;

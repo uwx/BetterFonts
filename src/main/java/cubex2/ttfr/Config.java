@@ -1,6 +1,7 @@
 package cubex2.ttfr;
 
 import com.google.common.collect.Maps;
+import net.minecraft.client.Minecraft;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
 import net.minecraftforge.fml.client.FMLClientHandler;
@@ -10,8 +11,11 @@ import net.minecraftforge.fml.client.config.IConfigElement;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
-import java.awt.*;
+import java.awt.Font;
+import java.awt.FontFormatException;
+import java.awt.GraphicsEnvironment;
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -27,6 +31,7 @@ public class Config
     public static Configuration cfg;
 
     private static String fontName;
+    private static String fontPath;
     private static int fontSize;
     private static boolean antiAlias;
     private static boolean dropShadow;
@@ -45,6 +50,8 @@ public class Config
         fontSize = cfg.getInt("fontSize", Configuration.CATEGORY_GENERAL, 18, 1, 100, "The font's size");
         antiAlias = cfg.getBoolean("antiAlias", Configuration.CATEGORY_GENERAL, false, "Whether to use anti-aliasing");
         dropShadow = cfg.getBoolean("dropShadow", Configuration.CATEGORY_GENERAL, true, "Setting this to \"false\" will disable drop shadows completely");
+
+        fontPath = cfg.getString("fontPath", Configuration.CATEGORY_GENERAL, "", "Path to a font file to load. .ttf, .otf and .fon supported.");
 
         fontNameProp.setConfigEntryClass(SelectFontEntry.class);
 
@@ -68,7 +75,14 @@ public class Config
     {
         font.setDropShadowEnabled(dropShadow);
 
-        if (fontName == null || fontName.isEmpty())
+        if (fontPath != null && !fontPath.isEmpty())
+        {
+            try {
+                font.getStringRenderer().getCache().setDefaultFont(new File(Minecraft.getMinecraft().mcDataDir, fontPath), fontSize, antiAlias);
+            } catch (IOException | FontFormatException e) {
+                font.getStringRenderer().getCache().setDefaultFont("SansSerif", 18, false);
+            }
+        } else if (fontName == null || fontName.isEmpty())
         {
             font.getStringRenderer().getCache().setDefaultFont("SansSerif", 18, false);
         } else
